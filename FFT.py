@@ -20,17 +20,17 @@ import random
     in the opposite way (in other words it uses omega_n^{-1} in place
     of omega_n), and it must be divided by n'''
 def FFT(A, inverse):
-   l = nextPower2(len(A))         # smallest power of two >= this degree bound
-   A = A + [0] * (l - len(A))
-   if inverse == False:
-      omega_n = cmath.exp(complex(0, 2*cmath.pi/len(A)))
-   else:
-      omega_n = cmath.exp(complex(0, -2*cmath.pi/len(A)))
-   Y = FFTAux(A, omega_n)
-   if inverse == False:
-      return Y
-   else:
-      return [Y[i] / len(Y) for i in range(len(Y))]
+    l = nextPower2(len(A))         # smallest power of two >= this degree bound
+    A = A + [0] * (l - len(A))
+    if inverse == False:
+        omega_n = cmath.exp(complex(0, 2*cmath.pi/len(A)))
+    else:
+        omega_n = cmath.exp(complex(0, -2*cmath.pi/len(A)))
+    Y = FFTAux(A, omega_n)
+    if inverse == False:
+        return Y
+    else:
+        return [Y[i] / len(Y) for i in range(len(Y))]
 
 ''' You have to fill out the following method.  A precondition is that the 
     length n of A is a power of two and omega_n is the principal nth root of 
@@ -49,13 +49,33 @@ def FFT(A, inverse):
     odd positions.  Try it out in the interpreter on a list.  Try changing
     the value after the third colon to see what role it has.  '''
 def FFTAux(A, omega_n):
-   return [1]
+    if (len(A) == 1):
+        # Basecase, return A
+        return A
+    AE = A[0:len(A):2]
+    AO = A[1:len(A):2]
+    # List size / 2, double up omega_n
+    Even_result = FFTAux(AE, omega_n * omega_n)
+    Odd_result = FFTAux(AO, omega_n * omega_n)
+    # Double up even result and odd result
+    Even_result = Even_result * 2
+    Odd_result = Odd_result * 2
+    # Start to rotate each entry of odd_result to make them right
+    current_omega = omega_n
+    for i in range(len(Odd_result)-1):
+        Odd_result[i+1] *= current_omega
+        current_omega *= omega_n
+    # Add up even result and odd result
+    Return_result = [0] * len(Even_result)
+    for i in range(len(Even_result)):
+        Return_result[i] = Even_result[i] + Odd_result[i]
+    return Return_result
 
 '''  This is to work just like FFT, except that it pads A so that its
      length is the next power of three, so that it can use a three-way
      recursion instead of a two-way one. '''
 def FFT3(A, inverse):
-   return [1]
+    return [1]
 
 '''  This has to work like FFTAux, except that the length of A
      is a power of three, and it makes three recursive calls of size n/3
@@ -75,41 +95,57 @@ def FFT3Aux(A, omega_n):
     return [1]
 
 def logCeil(n):
-   result = 0
-   while (n > 1):
-      result += 1
-      n = n / 2 + n % 2
-   return result
+    result = 0
+    while (n > 1):
+        result += 1
+        n = n / 2 + n % 2
+    return result
 
 def twoToThe(i):
-   result = 1
-   while (i > 0):
-      result = result * 2
-      i -= 1
-   return result 
+    result = 1
+    while (i > 0):
+        result = result * 2
+        i -= 1
+    return result
 
 ''' Naive multiplication algorithm for two polynomials.  Implement the
     O(n^2) algorithm for multiplying polynomials A1 and A2.  '''
 def naiveMult(A1, A2):
-   return []
+    Result = [0] * (len(A1) + len(A2))
+    for i in range(len(A1)):
+        for j in range(len(A2)):
+            Result[i+j] += A1[i] * A2[j]
+    return Result
 
 def nextPower2(i):
-   return twoToThe(logCeil(i))
+    return twoToThe(logCeil(i))
 
 '''  Fill in the rest of this, so that it computes the product of
      two polynomials that have integer coefficients in O(n log n) time.  
      Use the approach suggested by the book chapter.
 
      The output list should match the one given by naiveMult; to
-     achieve this, you will need to round the real part of eachcoefficient
+     achieve this, you will need to round the real part of each coefficient
      of the inverse DFT, since it will have small roundoff errors.   '''
 def polyMult(A1, A2):
     l = len(A1) + len(A2) - 1  # number of terms in product polynomial
     l2 = nextPower2(l)         # smallest power of two >= this
-    return []
+    # Populate A1 and A2 to length of l2
+    A1 = A1 + [0] * (l2 - len(A1))
+    A2 = A2 + [0] * (l2 - len(A2))
+    A1_Point_Value = FFT(A1, False)
+    A2_Point_Value = FFT(A2, False)
+    Result_Point_Value = [0] * l2
+    for i in range(l2):
+        Result_Point_Value[i] = A1_Point_Value[i] * A2_Point_Value[i]
+    # Now do inverse FFT
+    Result = FFT(Result_Point_Value, True)
+    for i in range(len(Result)):
+        Result[i] = int(Result[i].real + 0.00001)
+    return Result
 
 if __name__ == "__main__":
-    
+
     A1 = [2,9,4,2]
     A2 = [7,9,6,0]
     '''  The following commented-out code gives a way to generate long 
@@ -117,10 +153,10 @@ if __name__ == "__main__":
          two methods change as you play with 'length'.  If you have done your
          code correctly, your polyMult should be dramatically faster than
          naiveMult when the length gets large. '''
-    #length =  2047
-    #A1 = [random.randint(0,9) for i in range(length)]
+    # length =  20470
+    # A1 = [random.randint(0,9) for i in range(length)]
     print A1
-    #A2 = [random.randint(0,9) for i in range(length)]
+    # A2 = [random.randint(0,9) for i in range(length)]
     print "\n", A2
     t1 = time.clock()
     A3 = polyMult(A1, A2)
@@ -131,3 +167,13 @@ if __name__ == "__main__":
     print "result of polyMult:   ", A3
     print "Time for polyMult: ", t2 - t1
     print "Time for naiveMult:", t3 - t2
+
+    # print
+    # flag = True
+    # for i in range(len(A1)):
+    #     if A3[i] != A4[i]:
+    #         print i
+    #         flag = False
+    #         break
+    #
+    # print "Identical: " + str(flag)
