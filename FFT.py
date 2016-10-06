@@ -75,7 +75,17 @@ def FFTAux(A, omega_n):
      length is the next power of three, so that it can use a three-way
      recursion instead of a two-way one. '''
 def FFT3(A, inverse):
-    return [1]
+    l = nextPower3(len(A))  # smallest power of three >= this degree bound
+    A = A + [0] * (l - len(A))
+    if inverse == False:
+        omega_n = cmath.exp(complex(0, 2 * cmath.pi / len(A)))
+    else:
+        omega_n = cmath.exp(complex(0, -2 * cmath.pi / len(A)))
+    Y = FFT3Aux(A, omega_n)
+    if inverse == False:
+        return Y
+    else:
+        return [Y[i] / len(Y) for i in range(len(Y))]
 
 '''  This has to work like FFTAux, except that the length of A
      is a power of three, and it makes three recursive calls of size n/3
@@ -92,7 +102,35 @@ def FFT3(A, inverse):
      it work.
 '''
 def FFT3Aux(A, omega_n):
-    return [1]
+    if (len(A) == 1):
+        # Basecase, return A
+        return A
+    A0 = A[0:len(A):3]
+    A1 = A[1:len(A):3]
+    A2 = A[2:len(A):3]
+    # List size / 3, triple up omega_n
+    A0_result = FFT3Aux(A0, omega_n * omega_n * omega_n)
+    A1_result = FFT3Aux(A1, omega_n * omega_n * omega_n)
+    A2_result = FFT3Aux(A2, omega_n * omega_n * omega_n)
+    # Triple up even result and odd result
+    A0_result = A0_result * 3
+    A1_result = A1_result * 3
+    A2_result = A2_result * 3
+    # Start to rotate each entry of A1_result to make them right
+    current_omega = omega_n
+    for i in range(len(A1_result)-1):
+        A1_result[i+1] *= current_omega
+        current_omega *= omega_n
+    # Start to rotate each entry of A2_result to make them right
+    current_omega = omega_n * omega_n
+    for i in range(len(A2_result)-1):
+        A2_result[i+1] *= current_omega
+        current_omega *= (omega_n * omega_n)
+    # Add up even result and odd result
+    Return_result = [0] * len(A0_result)
+    for i in range(len(A0_result)):
+        Return_result[i] = A0_result[i] + A1_result[i] + A2_result[i]
+    return Return_result
 
 def logCeil(n):
     result = 0
@@ -101,10 +139,24 @@ def logCeil(n):
         n = n / 2 + n % 2
     return result
 
+def logCeil3(n):
+    result = 0
+    while (n > 1):
+        result += 1
+        n = n / 3 + n % 3
+    return result
+
 def twoToThe(i):
     result = 1
     while (i > 0):
         result = result * 2
+        i -= 1
+    return result
+
+def threeToThe(i):
+    result = 1
+    while (i > 0):
+        result = result * 3
         i -= 1
     return result
 
@@ -119,6 +171,9 @@ def naiveMult(A1, A2):
 
 def nextPower2(i):
     return twoToThe(logCeil(i))
+
+def nextPower3(i):
+    return threeToThe(logCeil3(i))
 
 '''  Fill in the rest of this, so that it computes the product of
      two polynomials that have integer coefficients in O(n log n) time.  
@@ -144,19 +199,36 @@ def polyMult(A1, A2):
         Result[i] = int(Result[i].real + 0.00001)
     return Result
 
+def polyMult3(A1, A2):
+    l = len(A1) + len(A2) - 1  # number of terms in product polynomial
+    l2 = nextPower3(l)         # smallest power of two >= this
+    # Populate A1 and A2 to length of l2
+    A1 = A1 + [0] * (l2 - len(A1))
+    A2 = A2 + [0] * (l2 - len(A2))
+    A1_Point_Value = FFT3(A1, False)
+    A2_Point_Value = FFT3(A2, False)
+    Result_Point_Value = [0] * l2
+    for i in range(l2):
+        Result_Point_Value[i] = A1_Point_Value[i] * A2_Point_Value[i]
+    # Now do inverse FFT
+    Result = FFT3(Result_Point_Value, True)
+    for i in range(len(Result)):
+        Result[i] = int(Result[i].real + 0.00001)
+    return Result
+
 if __name__ == "__main__":
 
-    A1 = [2,9,4,2]
-    A2 = [7,9,6,0]
+    # A1 = [2,9,4,2]
+    # A2 = [7,9,6,0]
     '''  The following commented-out code gives a way to generate long 
          sequences of digits to experiment with.  Notice how the times for the 
          two methods change as you play with 'length'.  If you have done your
          code correctly, your polyMult should be dramatically faster than
          naiveMult when the length gets large. '''
-    # length =  20470
-    # A1 = [random.randint(0,9) for i in range(length)]
+    length =  20470
+    A1 = [random.randint(0,9) for i in range(length)]
     print A1
-    # A2 = [random.randint(0,9) for i in range(length)]
+    A2 = [random.randint(0,9) for i in range(length)]
     print "\n", A2
     t1 = time.clock()
     A3 = polyMult(A1, A2)
@@ -170,7 +242,7 @@ if __name__ == "__main__":
 
     # print
     # flag = True
-    # for i in range(len(A1)):
+    # for i in range(len(A4)):
     #     if A3[i] != A4[i]:
     #         print i
     #         flag = False
